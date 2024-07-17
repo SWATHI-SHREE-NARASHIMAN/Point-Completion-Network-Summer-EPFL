@@ -26,17 +26,6 @@ SOFTWARE.
 import tensorflow as tf
 from tf_util import *
 import numpy as np
-
-
-def kl_divergence_loss(p,q):
-    p=tf.nn.softmax(p)
-    q=tf.nn.softmax(q)
-    kl_div = tf.reduce_sum(p * tf.log(p / q), axis=1)
-    return tf.reduce_mean(kl_div)
-
-
-
-    
     
 
 class Model:
@@ -52,6 +41,7 @@ class Model:
 
         #Since it is not VAE, KL Divergence can't be applied - applying MSE loss
         self.correlation_loss=self.correlation_mse_loss(features, gt_features)
+        self.kld_loss= self.kl_divergence_loss(features, gt_features)
         
         self.logits = self.creat_classifier(self.features, 3)
         self.coarse, self.fine = self.create_decoder(self.features, self.sub_inputs, self.sub_features)
@@ -147,4 +137,12 @@ class Model:
 
     def correlation_mse_loss(self, features1, features2):
         return return tf.reduce_mean(tf.square(features1 - features2))
+
+
+    def kl_divergence_loss(self,p,q):
+        p=tf.nn.softmax(p)
+        q=tf.nn.softmax(q)
+        kl_div = tf.reduce_sum(p * tf.log(p / q), axis=1)
+        return tf.reduce_mean(kl_div)
+
 
