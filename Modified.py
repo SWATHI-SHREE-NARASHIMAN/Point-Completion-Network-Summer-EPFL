@@ -28,16 +28,36 @@ from tf_util import *
 import numpy as np
 
 
+def kl_divergence_loss(p,q):
+    p=tf.nn.softmax(p)
+    q=tf.nn.softmax(q)
+    kl_div = tf.reduce_sum(p * tf.log(p / q), axis=1)
+    return tf.reduce_mean(kl_div)
+
+
+
+    
+    
+
 class Model:
     def __init__(self, inputs, npts, gt, alpha, beta, gt_class):
         self.num_coarse = 1024
         self.grid_size = 4
         self.grid_scale = 0.05
         self.num_fine = self.grid_size ** 2 * self.num_coarse
+
+        #Getting the two encoder representations
         self.features, self.sub_inputs, self.sub_features = self.create_encoder(inputs, npts)
+        self.gt_features, self.gt_sub_inputs, self.gt_sub_features=self.create_encoder(gt,npts)
+
+        #Since it is not VAE, KL Divergence can't be applied - applying MSE loss
+        self.correlation_loss=self.correlation_mse_loss(features, gt_features)
+        
         self.logits = self.creat_classifier(self.features, 3)
         self.coarse, self.fine = self.create_decoder(self.features, self.sub_inputs, self.sub_features)
         self.loss, self.update = self.create_loss(self.coarse, self.fine, gt, alpha, beta, gt_class)
+        #Presenting the net loss term by keeping alpha and beta (proportions of the two losses) 1
+        self.total_loss=self.loss+self.correlation_loss
         self.outputs = self.fine
         self.visualize_ops = [tf.split(inputs[0], npts, axis=0), self.coarse, self.fine, gt]
         self.visualize_titles = ['input', 'coarse output', 'fine output', 'ground truth']
@@ -124,4 +144,7 @@ class Model:
     def class_loss (self, gt_class):
         loss = tf.losses.sparse_softmax_cross_entropy(labels=gt_class, logits=self.logits)
         return loss
+
+    def correlation_mse_loss(self, features1, features2):
+        return return tf.reduce_mean(tf.square(features1 - features2))
 
